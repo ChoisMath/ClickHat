@@ -191,6 +191,23 @@
         .btn-equip { background: #48BB78; box-shadow: 0 3px 0 #2F855A; }
         .btn-close { background: #CBD5E0; color: #2D3748; box-shadow: 0 4px 0 #A0AEC0; margin-top: 20px; width: 100%; padding: 10px; border-radius: 10px; }
 
+        /* 모드 선택 버튼 */
+        .mode-btn {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #4A5568;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Jua', sans-serif;
+        }
+        .mode-btn:hover { border-color: #718096; }
+        .mode-btn.mode-active {
+            border-color: #F6E05E;
+            background: rgba(246, 224, 94, 0.2);
+        }
+
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
@@ -270,9 +287,21 @@
     <div id="menu-screen">
         <h1 class="text-4xl md:text-5xl text-white mb-2 text-center" style="text-shadow: 3px 3px 0 #000;">🎩 모자 디펜스</h1>
         <p class="text-lg text-yellow-300 mb-6">Tactical Edition</p>
-        
+
         <p id="game-over-msg" class="text-2xl text-red-400 mb-2 hidden font-bold">GAME OVER</p>
         <p id="final-score-display" class="text-xl text-white mb-4 hidden">획득: 0</p>
+
+        <!-- 모드 선택 -->
+        <div class="flex gap-3 mb-4">
+            <button id="btn-easy" class="mode-btn mode-active" onclick="selectGameMode('easy')">
+                <div class="text-lg">🐢 Easy</div>
+                <div class="text-xs text-gray-300">느린 이동속도</div>
+            </button>
+            <button id="btn-hard" class="mode-btn" onclick="selectGameMode('hard')">
+                <div class="text-lg">🔥 Hard</div>
+                <div class="text-xs text-gray-300">코인 2배</div>
+            </button>
+        </div>
 
         <button class="btn" id="start-btn">게임 시작</button>
         <button class="btn" style="background-color: #4A5568; font-size: 18px; margin-top: 15px;" onclick="openShop()">상점 열기</button>
@@ -381,7 +410,10 @@
             paused: false,
             score: 0,
             coins: 0,
-            
+
+            // 게임 모드: 'easy' | 'hard'
+            gameMode: 'easy',
+
             // 스탯
             clickDamage: 1,
             upgradeCost: 30,
@@ -392,9 +424,9 @@
                 laser: 0,
                 net: 0
             },
-            
+
             // 현재 모드: 'WEAPON', 'LASER', 'NET', 'PLACING_GODZILLA'
-            actionMode: 'WEAPON', 
+            actionMode: 'WEAPON',
 
             // 세션 데이터
             killedInSession: 0,
@@ -567,9 +599,10 @@
                 // 공격력 1: 0.33배, 공격력 2: 0.67배, 공격력 3: 1배, 공격력 4: 1.33배 ...
                 const damageSpeedFactor = state.clickDamage / 3;
                 const scoreSpeedFactor = 1 + (state.score / 200); // 점수에 따른 점진적 증가
-                const speedBase = damageSpeedFactor * scoreSpeedFactor;
+                const modeSpeedFactor = state.gameMode === 'easy' ? 0.5 : 1.0; // Easy 모드: 50% 속도
+                const speedBase = damageSpeedFactor * scoreSpeedFactor * modeSpeedFactor;
                 this.baseVy = randomInt(1, 3) * speedBase;
-                this.vx = (Math.random()-0.5) * 2 * damageSpeedFactor;
+                this.vx = (Math.random()-0.5) * 2 * damageSpeedFactor * modeSpeedFactor;
                 
                 this.speedModifier = 1.0;
                 this.hitStopTimer = 0; // 타격 시 멈춤 타이머
@@ -662,20 +695,26 @@
                 if (idx > -1) {
                     state.hats.splice(idx, 1);
                     createParticles(hat.x, hat.y, hat.color, 15);
-                    
+
                     let reward = 1;
                     if(hat.maxHp >= 21) reward = 10;
                     else if(hat.maxHp >= 11) reward = 5;
                     else if(hat.maxHp >= 6) reward = 2;
-                    
+
+                    // Hard 모드: 코인 2배
+                    const coinMultiplier = state.gameMode === 'hard' ? 2 : 1;
+                    const coinReward = reward * coinMultiplier;
+
                     state.score += reward;
-                    state.coins += reward;
-                    state.texts.push(new FloatingText(hat.x, hat.y-20, `+${reward}`, "#FFF"));
-                    
+                    state.coins += coinReward;
+                    state.texts.push(new FloatingText(hat.x, hat.y-20, `+${coinReward}`, state.gameMode === 'hard' ? "#F6E05E" : "#FFF"));
+
                     state.killedInSession++;
                     if(state.killedInSession % 2 === 0) {
-                        state.score++; state.coins++;
-                        state.texts.push(new FloatingText(hat.x, hat.y-40, "Bonus!", "#F6E05E"));
+                        const bonus = 1 * coinMultiplier;
+                        state.score++;
+                        state.coins += bonus;
+                        state.texts.push(new FloatingText(hat.x, hat.y-40, `Bonus! +${bonus}`, "#F6E05E"));
                     }
                     updateUI();
                 }
@@ -1000,6 +1039,14 @@
         function hideNotification() {
             ui.notification.style.opacity = 0;
         }
+
+        // 게임 모드 선택
+        function selectGameMode(mode) {
+            state.gameMode = mode;
+            document.getElementById('btn-easy').classList.toggle('mode-active', mode === 'easy');
+            document.getElementById('btn-hard').classList.toggle('mode-active', mode === 'hard');
+        }
+        window.selectGameMode = selectGameMode;
 
         // 게임 흐름
         function startGame() {
