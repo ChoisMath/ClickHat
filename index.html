@@ -406,6 +406,7 @@
             return BASE_MAX_MONSTERS + (state.clickDamage - 1) + (state.shotgunLevel * 5);
         }
         const ITEM_BAR_HEIGHT = 70; // 아이템 바 높이 (패딩 포함)
+        const TOP_SAFE_AREA = 80; // 상단 안전 영역 (주소창 아래)
 
         // 게임 오버 라인 (아이템 바 위)
         function getGameOverLine() {
@@ -641,7 +642,7 @@
             constructor() {
                 this.width = 70; this.height = 50;
                 this.x = randomInt(this.width, canvas.width - this.width);
-                this.y = -60;
+                this.y = TOP_SAFE_AREA; // 주소창 아래에서 생성
                 
                 const scoreFactor = Math.floor(state.score/5);
                 const upgradeFactor = state.clickDamage - 1;
@@ -654,7 +655,7 @@
                 const damageSpeedFactor = state.clickDamage / 6;
                 const scoreSpeedFactor = 1 + (state.score / 200); // 점수에 따른 점진적 증가
                 const modeSpeedFactor = state.gameMode === 'easy' ? 0.5 : 1.0; // Easy 모드: 50% 속도
-                const speedBase = damageSpeedFactor * scoreSpeedFactor * modeSpeedFactor;
+                const speedBase = damageSpeedFactor * scoreSpeedFactor * modeSpeedFactor * 0.8; // 전체적으로 20% 느리게
                 this.baseVy = randomInt(1, 3) * speedBase;
                 this.vx = (Math.random()-0.5) * 2 * damageSpeedFactor * modeSpeedFactor;
                 
@@ -731,9 +732,116 @@
 
             takeDamage(amount) {
                 this.hp -= amount;
-                this.hitTimer = 5; 
+                this.hitTimer = 5;
                 this.hitStopTimer = 10; // 타격 시 약 0.16초 멈춤 (타격감)
                 this.y -= 5; // 넉백
+            }
+        }
+
+        // 배경 장식용 모자괴물 (메뉴 화면용)
+        class BackgroundMonster {
+            constructor() {
+                this.width = 70; this.height = 50;
+                this.x = randomInt(this.width, canvas.width - this.width);
+                this.y = randomInt(-100, canvas.height); // 화면 전체에 랜덤 배치
+                this.color = randomColor();
+                this.baseVy = randomInt(1, 2) * 0.5; // 느리게 떠다니는 느낌
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.alpha = 0.6; // 약간 투명하게
+                this.wobble = Math.random() * Math.PI * 2; // 흔들림 위상
+            }
+
+            update() {
+                this.y += this.baseVy;
+                this.x += this.vx + Math.sin(this.wobble) * 0.3; // 좌우 흔들림
+                this.wobble += 0.02;
+
+                // 화면 밖으로 나가면 위에서 다시 생성
+                if (this.y > canvas.height + 50) {
+                    this.y = -60;
+                    this.x = randomInt(this.width, canvas.width - this.width);
+                    this.color = randomColor();
+                }
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.color;
+
+                ctx.beginPath();
+                ctx.roundRect(-35, -10, 70, 15, 5);
+                ctx.roundRect(-25, -50, 50, 45, 10);
+                ctx.fill();
+
+                // 띠
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(-25, -15, 50, 8);
+
+                // 눈
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-10, -25, 8, 0, Math.PI * 2);
+                ctx.arc(10, -25, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(-10, -22, 3, 0, Math.PI * 2);
+                ctx.arc(10, -22, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // 배경 괴물 배열
+        let backgroundMonsters = [];
+        let menuAnimationId = null;
+
+        // 배경 괴물 초기화
+        function initBackgroundMonsters() {
+            backgroundMonsters = [];
+            for (let i = 0; i < 8; i++) {
+                backgroundMonsters.push(new BackgroundMonster());
+            }
+        }
+
+        // 메뉴 배경 애니메이션
+        function menuAnimate() {
+            if (state.active) return; // 게임 중이면 중단
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 배경 그라데이션
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#1a202c');
+            grad.addColorStop(1, '#2d3748');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 배경 괴물 업데이트 & 그리기
+            backgroundMonsters.forEach(monster => {
+                monster.update();
+                monster.draw();
+            });
+
+            menuAnimationId = requestAnimationFrame(menuAnimate);
+        }
+
+        // 메뉴 애니메이션 시작
+        function startMenuAnimation() {
+            if (menuAnimationId) cancelAnimationFrame(menuAnimationId);
+            initBackgroundMonsters();
+            menuAnimate();
+        }
+
+        // 메뉴 애니메이션 중지
+        function stopMenuAnimation() {
+            if (menuAnimationId) {
+                cancelAnimationFrame(menuAnimationId);
+                menuAnimationId = null;
             }
         }
 
