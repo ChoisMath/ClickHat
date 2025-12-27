@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>모자 디펜스: 택티컬</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a202c;
+            font-family: 'Jua', sans-serif;
+            touch-action: none;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* UI 레이어 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+
+        /* 상단 HUD */
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        /* 하단 아이템 바 (클릭 가능) */
+        .item-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            pointer-events: auto;
+            margin-bottom: 20px;
+        }
+
+        .item-slot {
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #4A5568;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+
+        .item-slot.active {
+            border-color: #F6E05E;
+            background: rgba(246, 224, 94, 0.2);
+            transform: scale(1.1);
+        }
+
+        .item-slot:active {
+            transform: scale(0.95);
+        }
+
+        .item-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #E53E3E;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .item-icon { font-size: 28px; }
+        .item-name { font-size: 12px; color: #CBD5E0; margin-top: 2px; }
+
+        /* 상점 버튼 */
+        #shop-btn-container { pointer-events: auto; }
+        .cart-btn {
+            background: #ED8936;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 0 #C05621;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .cart-btn:active { transform: scale(0.95); box-shadow: none; }
+
+        .hud-text {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        .coin-text { color: #F6E05E; font-size: 24px; }
+
+        /* 모달 (메뉴/상점) */
+        #menu-screen, #shop-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 20;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+        }
+        #shop-modal { display: none; z-index: 30; }
+
+        .shop-content {
+            background: #2d3748;
+            border-radius: 15px;
+            padding: 20px;
+            width: 95%; max-width: 500px;
+            max-height: 80vh; overflow-y: auto;
+            border: 2px solid #4a5568;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .shop-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .btn {
+            background: #e53e3e; color: white; padding: 12px 30px; font-size: 22px;
+            border-radius: 50px; border: none; cursor: pointer;
+            font-family: 'Jua', sans-serif; box-shadow: 0 4px 0 #9b2c2c; margin-top: 10px;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+
+        .btn-shop {
+            background: #4299E1; box-shadow: 0 3px 0 #2B6CB0; color: white;
+            font-size: 15px; padding: 6px 12px; border-radius: 8px; min-width: 80px;
+        }
+        .btn-shop:disabled { background: #718096; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+        .btn-equip { background: #48BB78; box-shadow: 0 3px 0 #2F855A; }
+        .btn-close { background: #CBD5E0; color: #2D3748; box-shadow: 0 4px 0 #A0AEC0; margin-top: 20px; width: 100%; padding: 10px; border-radius: 10px; }
+
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        /* 안내 메시지 */
+        #notification {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: #F6E05E;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 인게임 HUD -->
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div>
+                <div class="hud-text">획득: <span id="score">0</span> 코인</div>
+                <div class="hud-text coin-text">🪙 <span id="coin-display">0</span></div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                <div id="shop-btn-container">
+                    <button id="btn-open-shop" class="cart-btn">🛒</button>
+                </div>
+                <div class="hud-text mt-2" style="font-size: 16px; color: #63B3ED;">공격력: <span id="dmg-display">1</span></div>
+                <div class="hud-text" style="font-size: 16px; color: #FC8181;">괴물: <span id="monster-count">0</span> / 15</div>
+            </div>
+        </div>
+        
+        <!-- 아이템 단축바 -->
+        <div class="item-bar">
+            <!-- 기본 무기 (손가락/산탄총) -->
+            <div class="item-slot active" id="slot-weapon" onclick="selectMode('WEAPON')">
+                <div class="item-icon" id="weapon-icon">👆</div>
+                <div class="item-name" id="weapon-name">기본</div>
+            </div>
+            
+            <!-- 레이저 -->
+            <div class="item-slot" id="slot-laser" onclick="selectMode('LASER')">
+                <div class="item-icon">⚡</div>
+                <div class="item-count" id="count-laser">0</div>
+                <div class="item-name">레이저</div>
+            </div>
+            
+            <!-- 그물 -->
+            <div class="item-slot" id="slot-net" onclick="selectMode('NET')">
+                <div class="item-icon">🕸️</div>
+                <div class="item-count" id="count-net">0</div>
+                <div class="item-name">그물</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 중앙 알림 메시지 -->
+    <div id="notification">메시지</div>
+
+    <!-- 메인 메뉴 -->
+    <div id="menu-screen">
+        <h1 class="text-4xl md:text-5xl text-white mb-2 text-center" style="text-shadow: 3px 3px 0 #000;">🎩 모자 디펜스</h1>
+        <p class="text-lg text-yellow-300 mb-6">Tactical Edition</p>
+        
+        <p id="game-over-msg" class="text-2xl text-red-400 mb-2 hidden font-bold">GAME OVER</p>
+        <p id="final-score-display" class="text-xl text-white mb-4 hidden">획득: 0</p>
+
+        <button class="btn" id="start-btn">게임 시작</button>
+        <button class="btn" style="background-color: #4A5568; font-size: 18px; margin-top: 15px;" onclick="openShop()">상점 열기</button>
+    </div>
+
+    <!-- 상점 모달 -->
+    <div id="shop-modal">
+        <div class="shop-content">
+            <h2 class="text-2xl text-white mb-4 text-center font-bold">🛒 아이템 상점</h2>
+            <div class="text-yellow-400 mb-4 text-center border-b border-gray-600 pb-2">
+                보유 코인: <span id="shop-coin">0</span>
+            </div>
+
+            <!-- 1. 강화 -->
+            <h3 class="text-lg text-blue-300 mb-2">⚡ 능력치</h3>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">공격력 강화</div>
+                    <div class="text-gray-400 text-xs">Lv.<span id="shop-dmg">1</span> (괴물 체력도 증가)</div>
+                </div>
+                <button id="btn-upgrade-dmg" class="btn-shop">강화</button>
+            </div>
+
+            <!-- 2. 무기 -->
+            <h3 class="text-lg text-red-300 mb-2 mt-4">🔫 전용 무기</h3>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">산탄총 (Shotgun)</div>
+                    <div class="text-gray-400 text-xs">영구 장착 / 범위 공격</div>
+                </div>
+                <button id="btn-buy-gun" class="btn-shop">구매 (1000)</button>
+            </div>
+
+            <!-- 3. 소모품 -->
+            <h3 class="text-lg text-purple-300 mb-2 mt-4">🎒 소모품 (여러개 구매 가능)</h3>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">레이저 (Laser)</div>
+                    <div class="text-gray-400 text-xs">가로 한 줄 즉시 삭제</div>
+                </div>
+                <button id="btn-buy-laser" class="btn-shop" onclick="buyConsumable('laser', 300)">구매 (300)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">그물 (Net)</div>
+                    <div class="text-gray-400 text-xs">범위 내 적 3초 정지</div>
+                </div>
+                <button id="btn-buy-net" class="btn-shop" onclick="buyConsumable('net', 250)">구매 (250)</button>
+            </div>
+
+            <!-- 4. 용병 -->
+            <h3 class="text-lg text-green-300 mb-2 mt-4">🦖 용병 (이번 판만 유지)</h3>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">고질라</div>
+                    <div class="text-gray-400 text-xs">배치형 / 슬로우 & 자동공격</div>
+                </div>
+                <button id="btn-buy-godzilla" class="btn-shop" onclick="buyGodzilla()">구매 (400)</button>
+            </div>
+
+            <button class="btn btn-close" onclick="closeShop()">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 게임 설정 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_MONSTERS = 15;
+
+        // UI 요소
+        const ui = {
+            score: document.getElementById('score'),
+            coins: document.getElementById('coin-display'),
+            monsters: document.getElementById('monster-count'),
+            dmg: document.getElementById('dmg-display'),
+            menu: document.getElementById('menu-screen'),
+            shopModal: document.getElementById('shop-modal'),
+            notification: document.getElementById('notification'),
+            
+            // 상점
+            shopCoin: document.getElementById('shop-coin'),
+            shopDmg: document.getElementById('shop-dmg'),
+            btnUpgrade: document.getElementById('btn-upgrade-dmg'),
+            btnBuyGun: document.getElementById('btn-buy-gun'),
+
+            // 아이템 슬롯
+            slotWeapon: document.getElementById('slot-weapon'),
+            slotLaser: document.getElementById('slot-laser'),
+            slotNet: document.getElementById('slot-net'),
+            countLaser: document.getElementById('count-laser'),
+            countNet: document.getElementById('count-net'),
+            weaponIcon: document.getElementById('weapon-icon'),
+            weaponName: document.getElementById('weapon-name'),
+        };
+
+        // 게임 상태
+        let state = {
+            active: false,
+            paused: false,
+            score: 0,
+            coins: 0,
+            
+            // 스탯
+            clickDamage: 1,
+            upgradeCost: 30,
+
+            // 인벤토리
+            hasShotgun: false,
+            consumables: {
+                laser: 0,
+                net: 0
+            },
+            
+            // 현재 모드: 'WEAPON', 'LASER', 'NET', 'PLACING_GODZILLA'
+            actionMode: 'WEAPON', 
+
+            // 세션 데이터
+            killedInSession: 0,
+            pets: [], // 여러 마리 고질라
+            
+            hats: [],
+            particles: [],
+            texts: [],
+            
+            lastTime: 0,
+            spawnTimer: 0,
+            spawnInterval: 1500,
+            animationId: null
+        };
+
+        // --- 로컬 스토리지 ---
+        function loadData() {
+            const d = localStorage;
+            if(d.getItem('ht_coins')) state.coins = parseInt(d.getItem('ht_coins'));
+            if(d.getItem('ht_dmg')) state.clickDamage = parseInt(d.getItem('ht_dmg'));
+            if(d.getItem('ht_cost')) state.upgradeCost = parseInt(d.getItem('ht_cost'));
+            if(d.getItem('ht_gun')) state.hasShotgun = d.getItem('ht_gun') === '1';
+            
+            // 소모품 수량 로드
+            if(d.getItem('ht_lasers')) state.consumables.laser = parseInt(d.getItem('ht_lasers'));
+            if(d.getItem('ht_nets')) state.consumables.net = parseInt(d.getItem('ht_nets'));
+
+            updateUI();
+        }
+
+        function saveData() {
+            const d = localStorage;
+            d.setItem('ht_coins', state.coins);
+            d.setItem('ht_dmg', state.clickDamage);
+            d.setItem('ht_cost', state.upgradeCost);
+            d.setItem('ht_gun', state.hasShotgun ? '1' : '0');
+            d.setItem('ht_lasers', state.consumables.laser);
+            d.setItem('ht_nets', state.consumables.net);
+        }
+
+        // --- 캔버스 리사이징 ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const randomColor = () => ['#F56565', '#ED8936', '#ECC94B', '#48BB78', '#4299E1', '#9F7AEA', '#ED64A6'][randomInt(0, 6)];
+
+        // --- 클래스 정의 ---
+
+        class Particle {
+            constructor(x, y, color, speed=10) {
+                this.x = x; this.y = y; this.color = color;
+                this.vx = (Math.random()-0.5)*speed; this.vy = (Math.random()-0.5)*speed;
+                this.alpha = 1; this.radius = Math.random()*3+2;
+            }
+            update() {
+                this.x+=this.vx; this.y+=this.vy; this.vy+=0.5; this.alpha-=0.05;
+            }
+            draw() {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color) {
+                this.x = x; this.y = y; this.text = text; this.color = color;
+                this.life = 60; this.vy = -1;
+            }
+            update() { this.y += this.vy; this.life--; }
+            draw() {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.life/60);
+                ctx.fillStyle = this.color; ctx.font = "bold 20px Jua";
+                ctx.strokeStyle = "black"; ctx.lineWidth = 3;
+                ctx.strokeText(this.text, this.x, this.y); ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        class Godzilla {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.range = 200;
+                this.damage = 3;
+                this.cooldown = 0;
+            }
+            update(hats) {
+                if(this.cooldown > 0) this.cooldown--;
+                
+                let target = null;
+                let minDist = this.range;
+
+                hats.forEach(hat => {
+                    const dist = Math.hypot(hat.x - this.x, hat.y - this.y);
+                    if (dist < this.range) {
+                        // 1. 슬로우 효과
+                        hat.speedModifier = 0.5;
+                        if(dist < minDist) { minDist = dist; target = hat; }
+                    }
+                });
+
+                // 2. 공격 (30프레임 = 0.5초)
+                if (target && this.cooldown <= 0) {
+                    this.cooldown = 30;
+                    target.takeDamage(this.damage);
+                    createParticles(target.x, target.y, '#48BB78', 3);
+                    
+                    // 빔 효과
+                    ctx.save(); ctx.strokeStyle = '#48BB78'; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(target.x, target.y);
+                    ctx.stroke(); ctx.restore();
+                    
+                    checkKill(target);
+                }
+            }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
+                // 범위
+                ctx.beginPath(); ctx.arc(0,0,this.range,0,Math.PI*2);
+                ctx.fillStyle = 'rgba(72,187,120,0.1)'; ctx.fill();
+                // 몸체
+                ctx.fillStyle = '#2F855A'; ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+                // 눈
+                ctx.fillStyle = 'white';
+                ctx.beginPath(); ctx.arc(-8,-5,5,0,Math.PI*2); ctx.arc(8,-5,5,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath(); ctx.arc(-8,-5,2,0,Math.PI*2); ctx.arc(8,-5,2,0,Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class HatMonster {
+            constructor() {
+                this.width = 70; this.height = 50;
+                this.x = randomInt(this.width, canvas.width - this.width);
+                this.y = -60;
+                
+                const scoreFactor = Math.floor(state.score/5);
+                const upgradeFactor = state.clickDamage - 1;
+                this.hp = randomInt(1 + upgradeFactor, 20 + scoreFactor + upgradeFactor);
+                this.maxHp = this.hp;
+                this.color = randomColor();
+
+                const speedBase = 1 + (state.score / 150);
+                this.baseVy = randomInt(1, 3) * speedBase;
+                this.vx = (Math.random()-0.5) * 2;
+                
+                this.speedModifier = 1.0;
+                this.hitStopTimer = 0; // 타격 시 멈춤 타이머
+                this.freezeTimer = 0; // 그물 효과
+                this.hitTimer = 0; // 피격 효과 (색상)
+            }
+            
+            update() {
+                // 상태 이상 체크
+                if (this.freezeTimer > 0) {
+                    this.freezeTimer--;
+                    return 'active'; // 움직이지 않음
+                }
+                
+                if (this.hitStopTimer > 0) {
+                    this.hitStopTimer--;
+                    return 'active'; // 멈칫
+                }
+
+                // 이동
+                this.x += this.vx * this.speedModifier;
+                this.y += this.baseVy * this.speedModifier;
+                
+                this.speedModifier = 1.0; // 매 프레임 초기화 (고질라 오라 밖이면 복구)
+
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y > canvas.height) return 'gameover';
+                
+                if (this.hitTimer > 0) this.hitTimer--;
+                return 'active';
+            }
+
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
+                
+                // 피격 시
+                if (this.hitTimer > 0) { ctx.scale(1.1, 1.1); ctx.fillStyle = '#fff'; }
+                // 얼음(그물) 효과
+                else if (this.freezeTimer > 0) { ctx.fillStyle = '#90CDF4'; }
+                else { ctx.fillStyle = this.color; }
+
+                ctx.beginPath();
+                ctx.roundRect(-35, -10, 70, 15, 5); 
+                ctx.roundRect(-25, -50, 50, 45, 10); ctx.fill();
+                
+                // 띠
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(-25, -15, 50, 8);
+                
+                // 눈
+                ctx.fillStyle = 'white';
+                ctx.beginPath(); ctx.arc(-10,-25,8,0,Math.PI*2); ctx.arc(10,-25,8,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath(); ctx.arc(-10,-22,3,0,Math.PI*2); ctx.arc(10,-22,3,0,Math.PI*2); ctx.fill();
+
+                // 체력
+                ctx.fillStyle = 'white'; ctx.font = 'bold 24px Jua'; ctx.textAlign = 'center';
+                ctx.lineWidth = 3; ctx.strokeStyle = 'black';
+                ctx.strokeText(this.hp, 0, -65); ctx.fillText(this.hp, 0, -65);
+
+                // 그물 아이콘 (정지 중일 때)
+                if (this.freezeTimer > 0) {
+                    ctx.font = '20px Arial';
+                    ctx.fillText("🕸️", 0, 0);
+                }
+
+                ctx.restore();
+            }
+
+            isClicked(mx, my) {
+                return Math.hypot(mx - this.x, my - this.y + 20) < 60;
+            }
+
+            takeDamage(amount) {
+                this.hp -= amount;
+                this.hitTimer = 5; 
+                this.hitStopTimer = 10; // 타격 시 약 0.16초 멈춤 (타격감)
+                this.y -= 5; // 넉백
+            }
+        }
+
+        // --- 로직 ---
+
+        function createParticles(x, y, color, count) {
+            for(let i=0; i<count; i++) state.particles.push(new Particle(x, y, color));
+        }
+
+        function checkKill(hat) {
+            if (hat.hp <= 0) {
+                const idx = state.hats.indexOf(hat);
+                if (idx > -1) {
+                    state.hats.splice(idx, 1);
+                    createParticles(hat.x, hat.y, hat.color, 15);
+                    
+                    let reward = 1;
+                    if(hat.maxHp >= 21) reward = 10;
+                    else if(hat.maxHp >= 11) reward = 5;
+                    else if(hat.maxHp >= 6) reward = 2;
+                    
+                    state.score += reward;
+                    state.coins += reward;
+                    state.texts.push(new FloatingText(hat.x, hat.y-20, `+${reward}`, "#FFF"));
+                    
+                    state.killedInSession++;
+                    if(state.killedInSession % 2 === 0) {
+                        state.score++; state.coins++;
+                        state.texts.push(new FloatingText(hat.x, hat.y-40, "Bonus!", "#F6E05E"));
+                    }
+                    updateUI();
+                }
+            }
+        }
+
+        function animate(timestamp) {
+            if (!state.active || state.paused) return;
+            const dt = timestamp - state.lastTime;
+            state.lastTime = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 배경
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#1a202c');
+            grad.addColorStop(1, '#2d3748');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 펫 업데이트
+            state.pets.forEach(pet => {
+                pet.update(state.hats);
+                pet.draw();
+            });
+
+            // 생성기
+            state.spawnTimer += dt;
+            if (state.spawnTimer > state.spawnInterval) {
+                state.hats.push(new HatMonster());
+                state.spawnTimer = 0;
+                if (state.spawnInterval > 500) state.spawnInterval -= 10;
+            }
+
+            // 모자 업데이트
+            for (let i = state.hats.length - 1; i >= 0; i--) {
+                const hat = state.hats[i];
+                const status = hat.update();
+                if (status === 'gameover') { gameOver("방어선이 뚫렸습니다!"); return; }
+                hat.draw();
+            }
+
+            if (state.hats.length >= MAX_MONSTERS) {
+                gameOver("화면에 괴물이 너무 많습니다!");
+                return;
+            }
+
+            // 이펙트
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                const p = state.particles[i]; p.update(); p.draw();
+                if (p.alpha <= 0) state.particles.splice(i, 1);
+            }
+            for (let i = state.texts.length - 1; i >= 0; i--) {
+                const t = state.texts[i]; t.update(); t.draw();
+                if (t.life <= 0) state.texts.splice(i, 1);
+            }
+
+            // 조준선 (특수 모드일 때)
+            if (state.actionMode === 'PLACING_GODZILLA') {
+                showNotification("고질라를 배치할 위치를 클릭하세요");
+            } else if (state.actionMode === 'LASER') {
+                showNotification("레이저 목표 지점 클릭");
+            } else if (state.actionMode === 'NET') {
+                showNotification("그물 투척 지점 클릭");
+            } else {
+                hideNotification();
+            }
+
+            ui.monsters.innerText = state.hats.length;
+            state.animationId = requestAnimationFrame(animate);
+        }
+
+        // --- 입력 핸들러 ---
+        function handleInput(e) {
+            if (!state.active || state.paused) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+            const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            const mx = cx - rect.left;
+            const my = cy - rect.top;
+
+            // 1. 고질라 배치 모드
+            if (state.actionMode === 'PLACING_GODZILLA') {
+                state.pets.push(new Godzilla(mx, my));
+                state.texts.push(new FloatingText(mx, my, "배치 완료!", "#48BB78"));
+                state.actionMode = 'WEAPON'; // 무기로 복귀
+                return;
+            }
+
+            // 2. 레이저 사용 (가로줄 삭제)
+            if (state.actionMode === 'LASER') {
+                if (state.consumables.laser > 0) {
+                    state.consumables.laser--;
+                    // 이펙트: 가로 빔
+                    createParticles(canvas.width/2, my, '#F6E05E', 30);
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillRect(0, my - 20, canvas.width, 40); // 순간 번쩍임 (다음 프레임에 사라짐)
+                    ctx.restore();
+
+                    // 판정: Y축 범위 ±30
+                    for (let i = state.hats.length - 1; i >= 0; i--) {
+                        const hat = state.hats[i];
+                        if (Math.abs(hat.y - my) < 40) {
+                            hat.takeDamage(9999);
+                            checkKill(hat);
+                        }
+                    }
+                    saveData();
+                    updateUI();
+                }
+                state.actionMode = 'WEAPON';
+                return;
+            }
+
+            // 3. 그물 사용 (범위 정지)
+            if (state.actionMode === 'NET') {
+                if (state.consumables.net > 0) {
+                    state.consumables.net--;
+                    const range = 200;
+                    
+                    // 이펙트: 그물망
+                    createParticles(mx, my, '#90CDF4', 20);
+                    
+                    state.hats.forEach(hat => {
+                        if (Math.hypot(hat.x - mx, hat.y - my) < range) {
+                            hat.freezeTimer = 180; // 3초 (60 * 3)
+                            state.texts.push(new FloatingText(hat.x, hat.y, "정지!", "#90CDF4"));
+                        }
+                    });
+                    saveData();
+                    updateUI();
+                }
+                state.actionMode = 'WEAPON';
+                return;
+            }
+
+            // 4. 일반 무기 (기본 / 산탄총)
+            const isShotgun = state.hasShotgun;
+            
+            if (isShotgun) {
+                // 산탄총: 범위 공격
+                createParticles(mx, my, '#ED8936', 8);
+                const range = 120;
+                let hit = false;
+                state.hats.forEach(hat => {
+                    if (Math.hypot(hat.x - mx, hat.y - my) < range) {
+                        hat.takeDamage(state.clickDamage);
+                        createParticles(hat.x, hat.y, '#FFF', 2);
+                        checkKill(hat);
+                        hit = true;
+                    }
+                });
+                // 이펙트
+                ctx.save(); ctx.beginPath(); ctx.arc(mx, my, range, 0, Math.PI*2);
+                ctx.strokeStyle = 'rgba(237,137,54,0.5)'; ctx.stroke(); ctx.restore();
+
+            } else {
+                // 기본: 단일 타겟 (정확도 필요)
+                for (let i = state.hats.length - 1; i >= 0; i--) {
+                    const hat = state.hats[i];
+                    if (hat.isClicked(mx, my)) {
+                        hat.takeDamage(state.clickDamage);
+                        createParticles(hat.x, hat.y, '#FFF', 2);
+                        checkKill(hat);
+                        break; // 한 번에 하나
+                    }
+                }
+            }
+        }
+
+        // --- 상점/UI 로직 ---
+
+        function updateUI() {
+            ui.score.innerText = state.score;
+            ui.coins.innerText = state.coins;
+            ui.dmg.innerText = state.clickDamage;
+            
+            // 상점 정보
+            ui.shopCoin.innerText = state.coins;
+            ui.shopDmg.innerText = state.clickDamage;
+            ui.btnUpgrade.innerText = `강화 (${state.upgradeCost})`;
+            ui.btnUpgrade.disabled = state.coins < state.upgradeCost;
+
+            // 산탄총 버튼
+            if (state.hasShotgun) {
+                ui.btnBuyGun.innerText = "보유 중";
+                ui.btnBuyGun.disabled = true;
+                ui.btnBuyGun.classList.add('btn-equip');
+                // 인게임 아이콘 변경
+                ui.weaponIcon.innerText = "🔫";
+                ui.weaponName.innerText = "산탄총";
+            } else {
+                ui.btnBuyGun.innerText = "구매 (1000)";
+                ui.btnBuyGun.disabled = state.coins < 1000;
+                ui.btnBuyGun.classList.remove('btn-equip');
+                ui.weaponIcon.innerText = "👆";
+                ui.weaponName.innerText = "기본";
+            }
+
+            // 아이템 수량 표시
+            ui.countLaser.innerText = state.consumables.laser;
+            ui.countNet.innerText = state.consumables.net;
+
+            // 슬롯 활성화 상태
+            ui.slotWeapon.classList.toggle('active', state.actionMode === 'WEAPON');
+            ui.slotLaser.classList.toggle('active', state.actionMode === 'LASER');
+            ui.slotNet.classList.toggle('active', state.actionMode === 'NET');
+        }
+
+        function selectMode(mode) {
+            if (!state.active) return;
+            
+            // 수량 체크
+            if (mode === 'LASER' && state.consumables.laser <= 0) {
+                showNotification("레이저가 없습니다!");
+                setTimeout(hideNotification, 1000);
+                return;
+            }
+            if (mode === 'NET' && state.consumables.net <= 0) {
+                showNotification("그물이 없습니다!");
+                setTimeout(hideNotification, 1000);
+                return;
+            }
+
+            state.actionMode = mode;
+            updateUI();
+        }
+
+        // 아이템 구매
+        ui.btnUpgrade.onclick = () => {
+            if(state.coins >= state.upgradeCost) {
+                state.coins -= state.upgradeCost;
+                state.clickDamage++;
+                state.upgradeCost = Math.floor(state.upgradeCost * 1.6);
+                saveData(); updateUI();
+            }
+        };
+
+        ui.btnBuyGun.onclick = () => {
+            if(state.coins >= 1000) {
+                state.coins -= 1000;
+                state.hasShotgun = true;
+                saveData(); updateUI();
+            }
+        };
+
+        window.buyConsumable = (type, cost) => {
+            if(state.coins >= cost) {
+                state.coins -= cost;
+                state.consumables[type]++;
+                saveData(); updateUI();
+            }
+        };
+
+        window.buyGodzilla = () => {
+            if(state.coins >= 400) {
+                state.coins -= 400;
+                closeShop(); // 상점 닫고
+                state.actionMode = 'PLACING_GODZILLA'; // 배치 모드 진입
+                updateUI();
+                saveData();
+            }
+        };
+
+        function openShop() {
+            state.paused = true;
+            ui.shopModal.style.display = 'flex';
+            updateUI();
+        }
+        function closeShop() {
+            ui.shopModal.style.display = 'none';
+            state.paused = false;
+            if(state.active) {
+                state.lastTime = performance.now();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        // 메시지 표시
+        let notifyTimeout;
+        function showNotification(msg) {
+            ui.notification.innerText = msg;
+            ui.notification.style.opacity = 1;
+            clearTimeout(notifyTimeout);
+        }
+        function hideNotification() {
+            ui.notification.style.opacity = 0;
+        }
+
+        // 게임 흐름
+        function startGame() {
+            state.active = true;
+            state.paused = false;
+            state.score = 0;
+            state.killedInSession = 0;
+            state.hats = [];
+            state.pets = [];
+            state.particles = [];
+            state.texts = [];
+            state.actionMode = 'WEAPON';
+            
+            ui.menu.style.display = 'none';
+            ui.shopModal.style.display = 'none';
+            
+            state.lastTime = performance.now();
+            updateUI();
+            animate(state.lastTime);
+        }
+
+        function gameOver(reason) {
+            state.active = false;
+            cancelAnimationFrame(state.animationId);
+            state.pets = []; // 게임 오버 시 펫 초기화 (세션 한정)
+            saveData();
+            
+            ui.menu.style.display = 'flex';
+            document.getElementById('game-over-msg').innerText = reason;
+            document.getElementById('game-over-msg').classList.remove('hidden');
+            document.getElementById('final-score-display').innerText = `획득: ${state.score}`;
+            document.getElementById('final-score-display').classList.remove('hidden');
+            document.getElementById('start-btn').innerText = "다시 도전";
+            
+            hideNotification();
+        }
+
+        document.getElementById('start-btn').onclick = startGame;
+        document.getElementById('btn-open-shop').onclick = openShop;
+        document.addEventListener('keydown', (e) => {
+            if(e.code === 'Space' && state.active) gameOver("작전 중단");
+        });
+        canvas.addEventListener('pointerdown', handleInput);
+
+        window.openShop = openShop; 
+        window.closeShop = closeShop;
+        loadData();
+
+    </script>
+</body>
+</html>
