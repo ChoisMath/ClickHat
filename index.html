@@ -250,7 +250,7 @@
                     <button id="btn-open-shop" class="cart-btn">🛒</button>
                 </div>
                 <div class="hud-text mt-2" style="font-size: 16px; color: #63B3ED;">공격력: <span id="dmg-display">1</span></div>
-                <div class="hud-text" style="font-size: 16px; color: #FC8181;">괴물: <span id="monster-count">0</span> / 15</div>
+                <div class="hud-text" style="font-size: 16px; color: #FC8181;">괴물: <span id="monster-count">0</span> / <span id="max-monster-count">15</span></div>
             </div>
         </div>
     </div>
@@ -370,7 +370,12 @@
         // --- 게임 설정 ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const MAX_MONSTERS = 15;
+        const BASE_MAX_MONSTERS = 15;
+
+        // 최대 괴물 수 계산 (공격력 lv당 +1, 산탄총 lv당 +5)
+        function getMaxMonsters() {
+            return BASE_MAX_MONSTERS + (state.clickDamage - 1) + (state.shotgunLevel * 5);
+        }
         const ITEM_BAR_HEIGHT = 70; // 아이템 바 높이 (패딩 포함)
 
         // 게임 오버 라인 (아이템 바 위)
@@ -383,6 +388,7 @@
             score: document.getElementById('score'),
             coins: document.getElementById('coin-display'),
             monsters: document.getElementById('monster-count'),
+            maxMonsters: document.getElementById('max-monster-count'),
             dmg: document.getElementById('dmg-display'),
             menu: document.getElementById('menu-screen'),
             shopModal: document.getElementById('shop-modal'),
@@ -595,9 +601,9 @@
                 this.maxHp = this.hp;
                 this.color = randomColor();
 
-                // 공격력 기반 속도 계산 (공격력 3을 기준으로 현재 속도가 나오도록)
-                // 공격력 1: 0.33배, 공격력 2: 0.67배, 공격력 3: 1배, 공격력 4: 1.33배 ...
-                const damageSpeedFactor = state.clickDamage / 3;
+                // 공격력 기반 속도 계산 (공격력 6을 기준으로 현재 속도가 나오도록, 기존의 절반 효과)
+                // 공격력 1: 0.17배, 공격력 3: 0.5배, 공격력 6: 1배, 공격력 9: 1.5배 ...
+                const damageSpeedFactor = state.clickDamage / 6;
                 const scoreSpeedFactor = 1 + (state.score / 200); // 점수에 따른 점진적 증가
                 const modeSpeedFactor = state.gameMode === 'easy' ? 0.5 : 1.0; // Easy 모드: 50% 속도
                 const speedBase = damageSpeedFactor * scoreSpeedFactor * modeSpeedFactor;
@@ -772,7 +778,7 @@
                 hat.draw();
             }
 
-            if (state.hats.length >= MAX_MONSTERS) {
+            if (state.hats.length >= getMaxMonsters()) {
                 gameOver("화면에 괴물이 너무 많습니다!");
                 return;
             }
@@ -905,7 +911,8 @@
             ui.score.innerText = state.score;
             ui.coins.innerText = state.coins;
             ui.dmg.innerText = state.clickDamage;
-            
+            ui.maxMonsters.innerText = getMaxMonsters();
+
             // 상점 정보
             ui.shopCoin.innerText = state.coins;
             ui.shopDmg.innerText = state.clickDamage;
