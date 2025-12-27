@@ -342,14 +342,14 @@
                     <div class="text-white">레이저 (Laser)</div>
                     <div class="text-gray-400 text-xs">가로 한 줄 즉시 삭제</div>
                 </div>
-                <button id="btn-buy-laser" class="btn-shop" onclick="buyConsumable('laser', 300)">구매 (300)</button>
+                <button id="btn-buy-laser" class="btn-shop" onclick="buyConsumable('laser', 200)">구매 (200)</button>
             </div>
             <div class="shop-item">
                 <div>
                     <div class="text-white">그물 (Net)</div>
                     <div class="text-gray-400 text-xs">범위 내 적 3초 정지</div>
                 </div>
-                <button id="btn-buy-net" class="btn-shop" onclick="buyConsumable('net', 250)">구매 (250)</button>
+                <button id="btn-buy-net" class="btn-shop" onclick="buyConsumable('net', 150)">구매 (150)</button>
             </div>
 
             <!-- 4. 용병 -->
@@ -359,7 +359,7 @@
                     <div class="text-white">고질라</div>
                     <div class="text-gray-400 text-xs">배치형 / 슬로우 & 자동공격</div>
                 </div>
-                <button id="btn-buy-godzilla" class="btn-shop" onclick="buyGodzilla()">구매 (400)</button>
+                <button id="btn-buy-godzilla" class="btn-shop" onclick="buyGodzilla()">구매 (200)</button>
             </div>
 
             <button class="btn btn-close" onclick="closeShop()">닫기</button>
@@ -479,9 +479,9 @@
             return minRange + (maxRange - minRange) * (state.shotgunLevel - 1) / 4;
         }
 
-        // 산탄총 업그레이드 비용 (400, 600, 900, 1350, 2025)
+        // 산탄총 업그레이드 비용 (200, 400, 600, 900, 1350)
         function getShotgunUpgradeCost() {
-            const baseCosts = [400, 600, 900, 1350, 2025];
+            const baseCosts = [200, 400, 600, 900, 1350];
             if (state.shotgunLevel >= 5) return null; // 최대 레벨
             return baseCosts[state.shotgunLevel];
         }
@@ -753,10 +753,10 @@
                 pet.draw();
             });
 
-            // 생성기 (산탄총 레벨에 따라 스폰 속도 증가: Lv0=1배, Lv5=3배)
+            // 생성기 (산탄총 레벨에 따라 스폰 속도 증가: Lv0=1배, Lv5=1.67배)
             state.spawnTimer += dt;
-            // 스폰 배율: 레벨 0=1, 레벨 1=1.4, 레벨 2=1.8, 레벨 3=2.2, 레벨 4=2.6, 레벨 5=3
-            const spawnMultiplier = 1 + (state.shotgunLevel * 0.4);
+            // 스폰 배율: 레벨 0=1, 레벨 5=1.67 (기존의 1/3 효과)
+            const spawnMultiplier = 1 + (state.shotgunLevel * 0.13);
             const effectiveSpawnInterval = state.spawnInterval / spawnMultiplier;
             if (state.spawnTimer > effectiveSpawnInterval) {
                 state.hats.push(new HatMonster());
@@ -1006,8 +1006,8 @@
         };
 
         window.buyGodzilla = () => {
-            if(state.coins >= 400) {
-                state.coins -= 400;
+            if(state.coins >= 200) {
+                state.coins -= 200;
                 closeShop(); // 상점 닫고
                 state.actionMode = 'PLACING_GODZILLA'; // 배치 모드 진입
                 updateUI();
