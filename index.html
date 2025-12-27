@@ -186,8 +186,16 @@
         .btn-shop {
             background: #4299E1; box-shadow: 0 3px 0 #2B6CB0; color: white;
             font-size: 15px; padding: 6px 12px; border-radius: 8px; min-width: 80px;
+            transition: all 0.1s; cursor: pointer; border: none;
+            font-family: 'Jua', sans-serif;
+        }
+        .btn-shop:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: none;
+            background: #3182CE;
         }
         .btn-shop:disabled { background: #718096; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
+        .btn-shop.cooldown { background: #718096; box-shadow: none; pointer-events: none; opacity: 0.7; }
         .btn-equip { background: #48BB78; box-shadow: 0 3px 0 #2F855A; }
         .btn-close { background: #CBD5E0; color: #2D3748; box-shadow: 0 4px 0 #A0AEC0; margin-top: 20px; width: 100%; padding: 10px; border-radius: 10px; }
 
@@ -264,11 +272,11 @@
                 <div class="item-name" id="weapon-name">기본</div>
             </div>
 
-            <!-- 레이저 -->
-            <div class="item-slot" id="slot-laser" onclick="selectMode('LASER')">
-                <div class="item-icon">⚡</div>
-                <div class="item-count" id="count-laser">0</div>
-                <div class="item-name">레이저</div>
+            <!-- 폭탄 -->
+            <div class="item-slot" id="slot-bomb" onclick="selectMode('BOMB')">
+                <div class="item-icon">💣</div>
+                <div class="item-count" id="count-bomb">0</div>
+                <div class="item-name">폭탄</div>
             </div>
 
             <!-- 그물 -->
@@ -276,6 +284,13 @@
                 <div class="item-icon">🕸️</div>
                 <div class="item-count" id="count-net">0</div>
                 <div class="item-name">그물</div>
+            </div>
+
+            <!-- 고질라 -->
+            <div class="item-slot" id="slot-godzilla" onclick="selectMode('GODZILLA')">
+                <div class="item-icon">🦖</div>
+                <div class="item-count" id="count-godzilla">0</div>
+                <div class="item-name">고질라</div>
             </div>
         </div>
     </div>
@@ -339,27 +354,27 @@
             <h3 class="text-lg text-purple-300 mb-2 mt-4">🎒 소모품 (여러개 구매 가능)</h3>
             <div class="shop-item">
                 <div>
-                    <div class="text-white">레이저 (Laser)</div>
-                    <div class="text-gray-400 text-xs">가로 한 줄 즉시 삭제</div>
+                    <div class="text-white">폭탄 (Bomb) <span id="shop-bomb-count" class="text-yellow-400"></span></div>
+                    <div class="text-gray-400 text-xs">화면 전체 즉시 삭제</div>
                 </div>
-                <button id="btn-buy-laser" class="btn-shop" onclick="buyConsumable('laser', 200)">구매 (200)</button>
+                <button id="btn-buy-bomb" class="btn-shop">구매 (200)</button>
             </div>
             <div class="shop-item">
                 <div>
-                    <div class="text-white">그물 (Net)</div>
-                    <div class="text-gray-400 text-xs">범위 내 적 3초 정지</div>
+                    <div class="text-white">그물 (Net) <span id="shop-net-count" class="text-yellow-400"></span></div>
+                    <div class="text-gray-400 text-xs">화면 전체 5초 정지</div>
                 </div>
-                <button id="btn-buy-net" class="btn-shop" onclick="buyConsumable('net', 150)">구매 (150)</button>
+                <button id="btn-buy-net" class="btn-shop">구매 (150)</button>
             </div>
 
             <!-- 4. 용병 -->
             <h3 class="text-lg text-green-300 mb-2 mt-4">🦖 용병 (이번 판만 유지)</h3>
             <div class="shop-item">
                 <div>
-                    <div class="text-white">고질라</div>
+                    <div class="text-white">고질라 <span id="shop-godzilla-count" class="text-yellow-400"></span></div>
                     <div class="text-gray-400 text-xs">배치형 / 슬로우 & 자동공격</div>
                 </div>
-                <button id="btn-buy-godzilla" class="btn-shop" onclick="buyGodzilla()">구매 (200)</button>
+                <button id="btn-buy-godzilla" class="btn-shop">구매 (200)</button>
             </div>
 
             <button class="btn btn-close" onclick="closeShop()">닫기</button>
@@ -399,13 +414,21 @@
             shopDmg: document.getElementById('shop-dmg'),
             btnUpgrade: document.getElementById('btn-upgrade-dmg'),
             btnBuyGun: document.getElementById('btn-buy-gun'),
+            btnBuyBomb: document.getElementById('btn-buy-bomb'),
+            btnBuyNet: document.getElementById('btn-buy-net'),
+            btnBuyGodzilla: document.getElementById('btn-buy-godzilla'),
+            shopBombCount: document.getElementById('shop-bomb-count'),
+            shopNetCount: document.getElementById('shop-net-count'),
+            shopGodzillaCount: document.getElementById('shop-godzilla-count'),
 
             // 아이템 슬롯
             slotWeapon: document.getElementById('slot-weapon'),
-            slotLaser: document.getElementById('slot-laser'),
+            slotBomb: document.getElementById('slot-bomb'),
             slotNet: document.getElementById('slot-net'),
-            countLaser: document.getElementById('count-laser'),
+            slotGodzilla: document.getElementById('slot-godzilla'),
+            countBomb: document.getElementById('count-bomb'),
             countNet: document.getElementById('count-net'),
+            countGodzilla: document.getElementById('count-godzilla'),
             weaponIcon: document.getElementById('weapon-icon'),
             weaponName: document.getElementById('weapon-name'),
         };
@@ -427,11 +450,12 @@
             // 인벤토리
             shotgunLevel: 0, // 0: 미보유, 1~5: 레벨
             consumables: {
-                laser: 0,
-                net: 0
+                bomb: 0,
+                net: 0,
+                godzilla: 0
             },
 
-            // 현재 모드: 'WEAPON', 'LASER', 'NET', 'PLACING_GODZILLA'
+            // 현재 모드: 'WEAPON', 'PLACING_GODZILLA' (BOMB/NET은 즉시 발동)
             actionMode: 'WEAPON',
 
             // 세션 데이터
@@ -459,8 +483,9 @@
             else if(d.getItem('ht_gun') === '1') state.shotgunLevel = 1;
             
             // 소모품 수량 로드
-            if(d.getItem('ht_lasers')) state.consumables.laser = parseInt(d.getItem('ht_lasers'));
+            if(d.getItem('ht_bombs')) state.consumables.bomb = parseInt(d.getItem('ht_bombs'));
             if(d.getItem('ht_nets')) state.consumables.net = parseInt(d.getItem('ht_nets'));
+            if(d.getItem('ht_godzillas')) state.consumables.godzilla = parseInt(d.getItem('ht_godzillas'));
 
             updateUI();
         }
@@ -471,8 +496,9 @@
             d.setItem('ht_dmg', state.clickDamage);
             d.setItem('ht_cost', state.upgradeCost);
             d.setItem('ht_gun_lv', state.shotgunLevel);
-            d.setItem('ht_lasers', state.consumables.laser);
+            d.setItem('ht_bombs', state.consumables.bomb);
             d.setItem('ht_nets', state.consumables.net);
+            d.setItem('ht_godzillas', state.consumables.godzilla);
         }
 
         // 산탄총 범위 계산 (레벨 기반)
@@ -793,13 +819,9 @@
                 if (t.life <= 0) state.texts.splice(i, 1);
             }
 
-            // 조준선 (특수 모드일 때)
+            // 조준선 (배치 모드일 때만)
             if (state.actionMode === 'PLACING_GODZILLA') {
                 showNotification("고질라를 배치할 위치를 클릭하세요");
-            } else if (state.actionMode === 'LASER') {
-                showNotification("레이저 목표 지점 클릭");
-            } else if (state.actionMode === 'NET') {
-                showNotification("그물 투척 지점 클릭");
             } else {
                 hideNotification();
             }
@@ -820,61 +842,18 @@
 
             // 1. 고질라 배치 모드
             if (state.actionMode === 'PLACING_GODZILLA') {
-                state.pets.push(new Godzilla(mx, my));
-                state.texts.push(new FloatingText(mx, my, "배치 완료!", "#48BB78"));
+                if (state.consumables.godzilla > 0) {
+                    state.consumables.godzilla--;
+                    state.pets.push(new Godzilla(mx, my));
+                    state.texts.push(new FloatingText(mx, my, "배치 완료!", "#48BB78"));
+                    saveData();
+                    updateUI();
+                }
                 state.actionMode = 'WEAPON'; // 무기로 복귀
                 return;
             }
 
-            // 2. 레이저 사용 (가로줄 삭제)
-            if (state.actionMode === 'LASER') {
-                if (state.consumables.laser > 0) {
-                    state.consumables.laser--;
-                    // 이펙트: 가로 빔
-                    createParticles(canvas.width/2, my, '#F6E05E', 30);
-                    ctx.save();
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.fillRect(0, my - 20, canvas.width, 40); // 순간 번쩍임 (다음 프레임에 사라짐)
-                    ctx.restore();
-
-                    // 판정: Y축 범위 ±30
-                    for (let i = state.hats.length - 1; i >= 0; i--) {
-                        const hat = state.hats[i];
-                        if (Math.abs(hat.y - my) < 40) {
-                            hat.takeDamage(9999);
-                            checkKill(hat);
-                        }
-                    }
-                    saveData();
-                    updateUI();
-                }
-                state.actionMode = 'WEAPON';
-                return;
-            }
-
-            // 3. 그물 사용 (범위 정지)
-            if (state.actionMode === 'NET') {
-                if (state.consumables.net > 0) {
-                    state.consumables.net--;
-                    const range = 200;
-                    
-                    // 이펙트: 그물망
-                    createParticles(mx, my, '#90CDF4', 20);
-                    
-                    state.hats.forEach(hat => {
-                        if (Math.hypot(hat.x - mx, hat.y - my) < range) {
-                            hat.freezeTimer = 180; // 3초 (60 * 3)
-                            state.texts.push(new FloatingText(hat.x, hat.y, "정지!", "#90CDF4"));
-                        }
-                    });
-                    saveData();
-                    updateUI();
-                }
-                state.actionMode = 'WEAPON';
-                return;
-            }
-
-            // 4. 일반 무기 (기본 / 산탄총)
+            // 2. 일반 무기 (기본 / 산탄총)
             if (state.shotgunLevel > 0) {
                 // 산탄총: 범위 공격 (레벨에 따라 범위 증가)
                 const range = getShotgunRange();
@@ -956,31 +935,94 @@
                 ui.weaponName.innerText = "기본";
             }
 
-            // 아이템 수량 표시
-            ui.countLaser.innerText = state.consumables.laser;
+            // 아이템 수량 표시 (인게임)
+            ui.countBomb.innerText = state.consumables.bomb;
             ui.countNet.innerText = state.consumables.net;
+            ui.countGodzilla.innerText = state.consumables.godzilla;
+
+            // 상점 소모품 수량 표시
+            ui.shopBombCount.innerText = state.consumables.bomb > 0 ? `(보유: ${state.consumables.bomb})` : '';
+            ui.shopNetCount.innerText = state.consumables.net > 0 ? `(보유: ${state.consumables.net})` : '';
+            ui.shopGodzillaCount.innerText = state.consumables.godzilla > 0 ? `(보유: ${state.consumables.godzilla})` : '';
+
+            // 상점 소모품 버튼 상태
+            ui.btnBuyBomb.disabled = state.coins < 200;
+            ui.btnBuyNet.disabled = state.coins < 150;
+            ui.btnBuyGodzilla.disabled = state.coins < 200;
 
             // 슬롯 활성화 상태
             ui.slotWeapon.classList.toggle('active', state.actionMode === 'WEAPON');
-            ui.slotLaser.classList.toggle('active', state.actionMode === 'LASER');
-            ui.slotNet.classList.toggle('active', state.actionMode === 'NET');
+            ui.slotGodzilla.classList.toggle('active', state.actionMode === 'PLACING_GODZILLA');
         }
 
         function selectMode(mode) {
             if (!state.active) return;
-            
-            // 수량 체크
-            if (mode === 'LASER' && state.consumables.laser <= 0) {
-                showNotification("레이저가 없습니다!");
+
+            // 폭탄: 즉시 화면 전체 삭제
+            if (mode === 'BOMB') {
+                if (state.consumables.bomb <= 0) {
+                    showNotification("폭탄이 없습니다!");
+                    setTimeout(hideNotification, 1000);
+                    return;
+                }
+                state.consumables.bomb--;
+
+                // 화면 전체 폭발 이펙트
+                createParticles(canvas.width/2, canvas.height/2, '#FF6B6B', 50);
+
+                // 모든 모자괴물 즉사
+                for (let i = state.hats.length - 1; i >= 0; i--) {
+                    const hat = state.hats[i];
+                    createParticles(hat.x, hat.y, hat.color, 10);
+                    hat.takeDamage(9999);
+                    checkKill(hat);
+                }
+
+                showNotification("💥 폭탄 발동!");
                 setTimeout(hideNotification, 1000);
-                return;
-            }
-            if (mode === 'NET' && state.consumables.net <= 0) {
-                showNotification("그물이 없습니다!");
-                setTimeout(hideNotification, 1000);
+                saveData();
+                updateUI();
                 return;
             }
 
+            // 그물: 즉시 화면 전체 5초 정지
+            if (mode === 'NET') {
+                if (state.consumables.net <= 0) {
+                    showNotification("그물이 없습니다!");
+                    setTimeout(hideNotification, 1000);
+                    return;
+                }
+                state.consumables.net--;
+
+                // 화면 전체 그물 이펙트
+                createParticles(canvas.width/2, canvas.height/2, '#90CDF4', 30);
+
+                // 모든 모자괴물 5초(300프레임) 정지
+                state.hats.forEach(hat => {
+                    hat.freezeTimer = 300; // 5초 = 60fps * 5
+                    state.texts.push(new FloatingText(hat.x, hat.y, "정지!", "#90CDF4"));
+                });
+
+                showNotification("🕸️ 전체 정지!");
+                setTimeout(hideNotification, 1000);
+                saveData();
+                updateUI();
+                return;
+            }
+
+            // 고질라: 배치 모드로 전환
+            if (mode === 'GODZILLA') {
+                if (state.consumables.godzilla <= 0) {
+                    showNotification("고질라가 없습니다!");
+                    setTimeout(hideNotification, 1000);
+                    return;
+                }
+                state.actionMode = 'PLACING_GODZILLA';
+                updateUI();
+                return;
+            }
+
+            // 기본 무기
             state.actionMode = mode;
             updateUI();
         }
@@ -991,34 +1033,53 @@
                 state.coins -= state.upgradeCost;
                 state.clickDamage++;
                 state.upgradeCost = Math.floor(state.upgradeCost * 1.6);
+                applyCooldown(ui.btnUpgrade);
                 saveData(); updateUI();
             }
         };
+
+        // 쿨다운 적용 함수
+        function applyCooldown(button) {
+            button.classList.add('cooldown');
+            setTimeout(() => {
+                button.classList.remove('cooldown');
+            }, 1000);
+        }
 
         ui.btnBuyGun.onclick = () => {
             const cost = getShotgunUpgradeCost();
             if(cost && state.coins >= cost) {
                 state.coins -= cost;
                 state.shotgunLevel++;
+                applyCooldown(ui.btnBuyGun);
                 saveData(); updateUI();
             }
         };
 
-        window.buyConsumable = (type, cost) => {
-            if(state.coins >= cost) {
-                state.coins -= cost;
-                state.consumables[type]++;
-                saveData(); updateUI();
-            }
-        };
-
-        window.buyGodzilla = () => {
+        ui.btnBuyBomb.onclick = () => {
             if(state.coins >= 200) {
                 state.coins -= 200;
-                closeShop(); // 상점 닫고
-                state.actionMode = 'PLACING_GODZILLA'; // 배치 모드 진입
-                updateUI();
-                saveData();
+                state.consumables.bomb++;
+                applyCooldown(ui.btnBuyBomb);
+                saveData(); updateUI();
+            }
+        };
+
+        ui.btnBuyNet.onclick = () => {
+            if(state.coins >= 150) {
+                state.coins -= 150;
+                state.consumables.net++;
+                applyCooldown(ui.btnBuyNet);
+                saveData(); updateUI();
+            }
+        };
+
+        ui.btnBuyGodzilla.onclick = () => {
+            if(state.coins >= 200) {
+                state.coins -= 200;
+                state.consumables.godzilla++;
+                applyCooldown(ui.btnBuyGodzilla);
+                saveData(); updateUI();
             }
         };
 
