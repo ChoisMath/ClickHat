@@ -26,17 +26,13 @@
             left: 0;
         }
 
-        /* UI 레이어 */
+        /* UI 레이어 - 상단 HUD만 */
         #ui-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
             pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
             padding: 15px;
             box-sizing: border-box;
             z-index: 5;
@@ -50,21 +46,41 @@
             pointer-events: none;
         }
 
-        /* 하단 아이템 바 (클릭 가능) */
+        /* 하단 아이템 바 - 고정 footer */
+        .item-bar-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 32, 44, 0.95);
+            border-top: 2px solid #4A5568;
+            padding: 8px 10px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            z-index: 10;
+            pointer-events: auto;
+        }
+
         .item-bar {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            pointer-events: auto;
-            margin-bottom: 20px;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding: 2px;
+        }
+
+        .item-bar::-webkit-scrollbar {
+            display: none;
         }
 
         .item-slot {
-            width: 70px;
-            height: 70px;
-            background: rgba(0, 0, 0, 0.6);
+            width: 50px;
+            height: 50px;
+            min-width: 50px;
+            background: rgba(0, 0, 0, 0.5);
             border: 2px solid #4A5568;
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -76,8 +92,7 @@
 
         .item-slot.active {
             border-color: #F6E05E;
-            background: rgba(246, 224, 94, 0.2);
-            transform: scale(1.1);
+            background: rgba(246, 224, 94, 0.25);
         }
 
         .item-slot:active {
@@ -86,22 +101,22 @@
 
         .item-count {
             position: absolute;
-            top: -5px;
-            right: -5px;
+            top: -4px;
+            right: -4px;
             background: #E53E3E;
             color: white;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 14px;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
         }
 
-        .item-icon { font-size: 28px; }
-        .item-name { font-size: 12px; color: #CBD5E0; margin-top: 2px; }
+        .item-icon { font-size: 20px; }
+        .item-name { font-size: 9px; color: #A0AEC0; margin-top: 1px; }
 
         /* 상점 버튼 */
         #shop-btn-container { pointer-events: auto; }
@@ -205,14 +220,14 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- 인게임 HUD -->
+    <!-- 인게임 HUD (상단) -->
     <div id="ui-layer">
         <div class="hud-top">
             <div>
                 <div class="hud-text">획득: <span id="score">0</span> 코인</div>
                 <div class="hud-text coin-text">🪙 <span id="coin-display">0</span></div>
             </div>
-            
+
             <div style="display: flex; flex-direction: column; align-items: flex-end;">
                 <div id="shop-btn-container">
                     <button id="btn-open-shop" class="cart-btn">🛒</button>
@@ -221,22 +236,24 @@
                 <div class="hud-text" style="font-size: 16px; color: #FC8181;">괴물: <span id="monster-count">0</span> / 15</div>
             </div>
         </div>
-        
-        <!-- 아이템 단축바 -->
+    </div>
+
+    <!-- 하단 아이템 바 (고정 footer) -->
+    <div class="item-bar-container" id="item-bar-container">
         <div class="item-bar">
             <!-- 기본 무기 (손가락/산탄총) -->
             <div class="item-slot active" id="slot-weapon" onclick="selectMode('WEAPON')">
                 <div class="item-icon" id="weapon-icon">👆</div>
                 <div class="item-name" id="weapon-name">기본</div>
             </div>
-            
+
             <!-- 레이저 -->
             <div class="item-slot" id="slot-laser" onclick="selectMode('LASER')">
                 <div class="item-icon">⚡</div>
                 <div class="item-count" id="count-laser">0</div>
                 <div class="item-name">레이저</div>
             </div>
-            
+
             <!-- 그물 -->
             <div class="item-slot" id="slot-net" onclick="selectMode('NET')">
                 <div class="item-icon">🕸️</div>
@@ -283,10 +300,10 @@
             <h3 class="text-lg text-red-300 mb-2 mt-4">🔫 전용 무기</h3>
             <div class="shop-item">
                 <div>
-                    <div class="text-white">산탄총 (Shotgun)</div>
-                    <div class="text-gray-400 text-xs">영구 장착 / 범위 공격</div>
+                    <div class="text-white">산탄총 (Shotgun) <span id="shop-gun-lv" class="text-yellow-400"></span></div>
+                    <div class="text-gray-400 text-xs" id="shop-gun-desc">영구 장착 / 범위 공격</div>
                 </div>
-                <button id="btn-buy-gun" class="btn-shop">구매 (1000)</button>
+                <button id="btn-buy-gun" class="btn-shop">구매 (400)</button>
             </div>
 
             <!-- 3. 소모품 -->
@@ -325,6 +342,12 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const MAX_MONSTERS = 15;
+        const ITEM_BAR_HEIGHT = 70; // 아이템 바 높이 (패딩 포함)
+
+        // 게임 오버 라인 (아이템 바 위)
+        function getGameOverLine() {
+            return canvas.height - ITEM_BAR_HEIGHT;
+        }
 
         // UI 요소
         const ui = {
@@ -364,7 +387,7 @@
             upgradeCost: 30,
 
             // 인벤토리
-            hasShotgun: false,
+            shotgunLevel: 0, // 0: 미보유, 1~5: 레벨
             consumables: {
                 laser: 0,
                 net: 0
@@ -393,7 +416,9 @@
             if(d.getItem('ht_coins')) state.coins = parseInt(d.getItem('ht_coins'));
             if(d.getItem('ht_dmg')) state.clickDamage = parseInt(d.getItem('ht_dmg'));
             if(d.getItem('ht_cost')) state.upgradeCost = parseInt(d.getItem('ht_cost'));
-            if(d.getItem('ht_gun')) state.hasShotgun = d.getItem('ht_gun') === '1';
+            if(d.getItem('ht_gun_lv')) state.shotgunLevel = parseInt(d.getItem('ht_gun_lv'));
+            // 구버전 호환: hasShotgun이 있으면 레벨 1로 변환
+            else if(d.getItem('ht_gun') === '1') state.shotgunLevel = 1;
             
             // 소모품 수량 로드
             if(d.getItem('ht_lasers')) state.consumables.laser = parseInt(d.getItem('ht_lasers'));
@@ -407,9 +432,26 @@
             d.setItem('ht_coins', state.coins);
             d.setItem('ht_dmg', state.clickDamage);
             d.setItem('ht_cost', state.upgradeCost);
-            d.setItem('ht_gun', state.hasShotgun ? '1' : '0');
+            d.setItem('ht_gun_lv', state.shotgunLevel);
             d.setItem('ht_lasers', state.consumables.laser);
             d.setItem('ht_nets', state.consumables.net);
+        }
+
+        // 산탄총 범위 계산 (레벨 기반)
+        // 레벨 5에서 min(width, height) / 3
+        function getShotgunRange() {
+            if (state.shotgunLevel <= 0) return 0;
+            const maxRange = Math.min(canvas.width, canvas.height) / 3;
+            const minRange = 60; // 레벨 1 기본 범위
+            // 레벨 1~5를 minRange~maxRange로 선형 보간
+            return minRange + (maxRange - minRange) * (state.shotgunLevel - 1) / 4;
+        }
+
+        // 산탄총 업그레이드 비용 (400, 600, 900, 1350, 2025)
+        function getShotgunUpgradeCost() {
+            const baseCosts = [400, 600, 900, 1350, 2025];
+            if (state.shotgunLevel >= 5) return null; // 최대 레벨
+            return baseCosts[state.shotgunLevel];
         }
 
         // --- 캔버스 리사이징 ---
@@ -521,9 +563,13 @@
                 this.maxHp = this.hp;
                 this.color = randomColor();
 
-                const speedBase = 1 + (state.score / 150);
+                // 공격력 기반 속도 계산 (공격력 3을 기준으로 현재 속도가 나오도록)
+                // 공격력 1: 0.33배, 공격력 2: 0.67배, 공격력 3: 1배, 공격력 4: 1.33배 ...
+                const damageSpeedFactor = state.clickDamage / 3;
+                const scoreSpeedFactor = 1 + (state.score / 200); // 점수에 따른 점진적 증가
+                const speedBase = damageSpeedFactor * scoreSpeedFactor;
                 this.baseVy = randomInt(1, 3) * speedBase;
-                this.vx = (Math.random()-0.5) * 2;
+                this.vx = (Math.random()-0.5) * 2 * damageSpeedFactor;
                 
                 this.speedModifier = 1.0;
                 this.hitStopTimer = 0; // 타격 시 멈춤 타이머
@@ -550,7 +596,7 @@
                 this.speedModifier = 1.0; // 매 프레임 초기화 (고질라 오라 밖이면 복구)
 
                 if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if (this.y > canvas.height) return 'gameover';
+                if (this.y > getGameOverLine()) return 'gameover';
                 
                 if (this.hitTimer > 0) this.hitTimer--;
                 return 'active';
@@ -650,15 +696,30 @@
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // 게임 오버 라인 (경고선)
+            const gameOverY = getGameOverLine();
+            ctx.save();
+            ctx.strokeStyle = 'rgba(229, 62, 62, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, gameOverY);
+            ctx.lineTo(canvas.width, gameOverY);
+            ctx.stroke();
+            ctx.restore();
+
             // 펫 업데이트
             state.pets.forEach(pet => {
                 pet.update(state.hats);
                 pet.draw();
             });
 
-            // 생성기
+            // 생성기 (산탄총 레벨에 따라 스폰 속도 증가: Lv0=1배, Lv5=3배)
             state.spawnTimer += dt;
-            if (state.spawnTimer > state.spawnInterval) {
+            // 스폰 배율: 레벨 0=1, 레벨 1=1.4, 레벨 2=1.8, 레벨 3=2.2, 레벨 4=2.6, 레벨 5=3
+            const spawnMultiplier = 1 + (state.shotgunLevel * 0.4);
+            const effectiveSpawnInterval = state.spawnInterval / spawnMultiplier;
+            if (state.spawnTimer > effectiveSpawnInterval) {
                 state.hats.push(new HatMonster());
                 state.spawnTimer = 0;
                 if (state.spawnInterval > 500) state.spawnInterval -= 10;
@@ -769,24 +830,21 @@
             }
 
             // 4. 일반 무기 (기본 / 산탄총)
-            const isShotgun = state.hasShotgun;
-            
-            if (isShotgun) {
-                // 산탄총: 범위 공격
+            if (state.shotgunLevel > 0) {
+                // 산탄총: 범위 공격 (레벨에 따라 범위 증가)
+                const range = getShotgunRange();
                 createParticles(mx, my, '#ED8936', 8);
-                const range = 120;
-                let hit = false;
                 state.hats.forEach(hat => {
                     if (Math.hypot(hat.x - mx, hat.y - my) < range) {
                         hat.takeDamage(state.clickDamage);
                         createParticles(hat.x, hat.y, '#FFF', 2);
                         checkKill(hat);
-                        hit = true;
                     }
                 });
-                // 이펙트
+                // 범위 이펙트
                 ctx.save(); ctx.beginPath(); ctx.arc(mx, my, range, 0, Math.PI*2);
-                ctx.strokeStyle = 'rgba(237,137,54,0.5)'; ctx.stroke(); ctx.restore();
+                ctx.strokeStyle = 'rgba(237,137,54,0.5)'; ctx.lineWidth = 2;
+                ctx.stroke(); ctx.restore();
 
             } else {
                 // 기본: 단일 타겟 (정확도 필요)
@@ -815,18 +873,39 @@
             ui.btnUpgrade.innerText = `강화 (${state.upgradeCost})`;
             ui.btnUpgrade.disabled = state.coins < state.upgradeCost;
 
-            // 산탄총 버튼
-            if (state.hasShotgun) {
-                ui.btnBuyGun.innerText = "보유 중";
+            // 산탄총 버튼 (레벨 시스템)
+            const gunCost = getShotgunUpgradeCost();
+            const gunLvEl = document.getElementById('shop-gun-lv');
+            const gunDescEl = document.getElementById('shop-gun-desc');
+
+            if (state.shotgunLevel >= 5) {
+                // 최대 레벨
+                gunLvEl.innerText = 'Lv.5 (MAX)';
+                gunDescEl.innerText = `범위: ${Math.round(getShotgunRange())}px`;
+                ui.btnBuyGun.innerText = "최대 레벨";
                 ui.btnBuyGun.disabled = true;
                 ui.btnBuyGun.classList.add('btn-equip');
-                // 인게임 아이콘 변경
-                ui.weaponIcon.innerText = "🔫";
-                ui.weaponName.innerText = "산탄총";
-            } else {
-                ui.btnBuyGun.innerText = "구매 (1000)";
-                ui.btnBuyGun.disabled = state.coins < 1000;
+            } else if (state.shotgunLevel > 0) {
+                // 레벨 1~4: 업그레이드 가능
+                gunLvEl.innerText = `Lv.${state.shotgunLevel}`;
+                gunDescEl.innerText = `범위: ${Math.round(getShotgunRange())}px → ${Math.round(getShotgunRange() + (Math.min(canvas.width, canvas.height)/3 - 60)/4)}px`;
+                ui.btnBuyGun.innerText = `강화 (${gunCost})`;
+                ui.btnBuyGun.disabled = state.coins < gunCost;
                 ui.btnBuyGun.classList.remove('btn-equip');
+            } else {
+                // 미보유
+                gunLvEl.innerText = '';
+                gunDescEl.innerText = '영구 장착 / 범위 공격';
+                ui.btnBuyGun.innerText = `구매 (${gunCost})`;
+                ui.btnBuyGun.disabled = state.coins < gunCost;
+                ui.btnBuyGun.classList.remove('btn-equip');
+            }
+
+            // 인게임 아이콘 변경
+            if (state.shotgunLevel > 0) {
+                ui.weaponIcon.innerText = "🔫";
+                ui.weaponName.innerText = `Lv.${state.shotgunLevel}`;
+            } else {
                 ui.weaponIcon.innerText = "👆";
                 ui.weaponName.innerText = "기본";
             }
@@ -871,9 +950,10 @@
         };
 
         ui.btnBuyGun.onclick = () => {
-            if(state.coins >= 1000) {
-                state.coins -= 1000;
-                state.hasShotgun = true;
+            const cost = getShotgunUpgradeCost();
+            if(cost && state.coins >= cost) {
+                state.coins -= cost;
+                state.shotgunLevel++;
                 saveData(); updateUI();
             }
         };
