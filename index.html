@@ -292,6 +292,13 @@
                 <div class="item-count" id="count-godzilla">0</div>
                 <div class="item-name">고질라</div>
             </div>
+
+            <!-- 더블 코인 -->
+            <div class="item-slot" id="slot-doublecoin" onclick="selectMode('DOUBLE_COIN')">
+                <div class="item-icon">💰</div>
+                <div class="item-count" id="count-doublecoin">0</div>
+                <div class="item-name">더블코인</div>
+            </div>
         </div>
     </div>
 
@@ -366,6 +373,13 @@
                 </div>
                 <button id="btn-buy-net" class="btn-shop">구매 (150)</button>
             </div>
+            <div class="shop-item">
+                <div>
+                    <div class="text-white">더블 코인 <span id="shop-doublecoin-count" class="text-yellow-400"></span></div>
+                    <div class="text-gray-400 text-xs">코인 2배 (판당 2회까지 중첩)</div>
+                </div>
+                <button id="btn-buy-doublecoin" class="btn-shop">구매 (50)</button>
+            </div>
 
             <!-- 4. 용병 -->
             <h3 class="text-lg text-green-300 mb-2 mt-4">🦖 용병 (이번 판만 유지)</h3>
@@ -417,18 +431,22 @@
             btnBuyBomb: document.getElementById('btn-buy-bomb'),
             btnBuyNet: document.getElementById('btn-buy-net'),
             btnBuyGodzilla: document.getElementById('btn-buy-godzilla'),
+            btnBuyDoubleCoin: document.getElementById('btn-buy-doublecoin'),
             shopBombCount: document.getElementById('shop-bomb-count'),
             shopNetCount: document.getElementById('shop-net-count'),
             shopGodzillaCount: document.getElementById('shop-godzilla-count'),
+            shopDoubleCoinCount: document.getElementById('shop-doublecoin-count'),
 
             // 아이템 슬롯
             slotWeapon: document.getElementById('slot-weapon'),
             slotBomb: document.getElementById('slot-bomb'),
             slotNet: document.getElementById('slot-net'),
             slotGodzilla: document.getElementById('slot-godzilla'),
+            slotDoubleCoin: document.getElementById('slot-doublecoin'),
             countBomb: document.getElementById('count-bomb'),
             countNet: document.getElementById('count-net'),
             countGodzilla: document.getElementById('count-godzilla'),
+            countDoubleCoin: document.getElementById('count-doublecoin'),
             weaponIcon: document.getElementById('weapon-icon'),
             weaponName: document.getElementById('weapon-name'),
         };
@@ -452,14 +470,16 @@
             consumables: {
                 bomb: 0,
                 net: 0,
-                godzilla: 0
+                godzilla: 0,
+                doubleCoin: 0
             },
 
-            // 현재 모드: 'WEAPON', 'PLACING_GODZILLA' (BOMB/NET은 즉시 발동)
+            // 현재 모드: 'WEAPON', 'PLACING_GODZILLA' (BOMB/NET/DOUBLE_COIN은 즉시 발동)
             actionMode: 'WEAPON',
 
             // 세션 데이터
             killedInSession: 0,
+            doubleCoinStacks: 0, // 현재 판에서 사용한 더블코인 횟수 (0~2)
             pets: [], // 여러 마리 고질라
             
             hats: [],
@@ -486,6 +506,7 @@
             if(d.getItem('ht_bombs')) state.consumables.bomb = parseInt(d.getItem('ht_bombs'));
             if(d.getItem('ht_nets')) state.consumables.net = parseInt(d.getItem('ht_nets'));
             if(d.getItem('ht_godzillas')) state.consumables.godzilla = parseInt(d.getItem('ht_godzillas'));
+            if(d.getItem('ht_doublecoins')) state.consumables.doubleCoin = parseInt(d.getItem('ht_doublecoins'));
 
             updateUI();
         }
@@ -499,6 +520,7 @@
             d.setItem('ht_bombs', state.consumables.bomb);
             d.setItem('ht_nets', state.consumables.net);
             d.setItem('ht_godzillas', state.consumables.godzilla);
+            d.setItem('ht_doublecoins', state.consumables.doubleCoin);
         }
 
         // 산탄총 범위 계산 (레벨 기반)
@@ -734,16 +756,21 @@
                     else if(hat.maxHp >= 6) reward = 2;
 
                     // Hard 모드: 코인 2배
-                    const coinMultiplier = state.gameMode === 'hard' ? 2 : 1;
+                    const hardMultiplier = state.gameMode === 'hard' ? 2 : 1;
+                    // 더블 코인 효과: 스택당 2배 (0스택=1배, 1스택=2배, 2스택=4배)
+                    const doubleCoinMultiplier = Math.pow(2, state.doubleCoinStacks);
+                    const coinMultiplier = hardMultiplier * doubleCoinMultiplier;
                     const coinReward = reward * coinMultiplier;
 
                     state.score += reward;
                     state.coins += coinReward;
-                    state.texts.push(new FloatingText(hat.x, hat.y-20, `+${coinReward}`, state.gameMode === 'hard' ? "#F6E05E" : "#FFF"));
+                    // 더블코인 활성화 시 황금색 표시
+                    const textColor = (state.doubleCoinStacks > 0 || state.gameMode === 'hard') ? "#F6E05E" : "#FFF";
+                    state.texts.push(new FloatingText(hat.x, hat.y-20, `+${coinReward}`, textColor));
 
                     state.killedInSession++;
                     if(state.killedInSession % 2 === 0) {
-                        const bonus = 1 * coinMultiplier;
+                        const bonus = 1 * coinMultiplier; // 보너스에도 더블코인 효과 적용
                         state.score++;
                         state.coins += bonus;
                         state.texts.push(new FloatingText(hat.x, hat.y-40, `Bonus! +${bonus}`, "#F6E05E"));
@@ -939,16 +966,19 @@
             ui.countBomb.innerText = state.consumables.bomb;
             ui.countNet.innerText = state.consumables.net;
             ui.countGodzilla.innerText = state.consumables.godzilla;
+            ui.countDoubleCoin.innerText = state.consumables.doubleCoin;
 
             // 상점 소모품 수량 표시
             ui.shopBombCount.innerText = state.consumables.bomb > 0 ? `(보유: ${state.consumables.bomb})` : '';
             ui.shopNetCount.innerText = state.consumables.net > 0 ? `(보유: ${state.consumables.net})` : '';
             ui.shopGodzillaCount.innerText = state.consumables.godzilla > 0 ? `(보유: ${state.consumables.godzilla})` : '';
+            ui.shopDoubleCoinCount.innerText = state.consumables.doubleCoin > 0 ? `(보유: ${state.consumables.doubleCoin})` : '';
 
             // 상점 소모품 버튼 상태
             ui.btnBuyBomb.disabled = state.coins < 200;
             ui.btnBuyNet.disabled = state.coins < 150;
             ui.btnBuyGodzilla.disabled = state.coins < 200;
+            ui.btnBuyDoubleCoin.disabled = state.coins < 50;
 
             // 슬롯 활성화 상태
             ui.slotWeapon.classList.toggle('active', state.actionMode === 'WEAPON');
@@ -1022,10 +1052,72 @@
                 return;
             }
 
+            // 더블 코인: 즉시 코인 배율 증가
+            if (mode === 'DOUBLE_COIN') {
+                if (state.consumables.doubleCoin <= 0) {
+                    showNotification("더블 코인이 없습니다!");
+                    setTimeout(hideNotification, 1000);
+                    return;
+                }
+                // 판당 2회까지만 사용 가능
+                if (state.doubleCoinStacks >= 2) {
+                    showDoubleCoinLimitAlert();
+                    return;
+                }
+                state.consumables.doubleCoin--;
+                state.doubleCoinStacks++;
+
+                // 이펙트
+                createParticles(canvas.width/2, canvas.height/2, '#F6E05E', 30);
+
+                const multiplier = Math.pow(2, state.doubleCoinStacks);
+                showNotification(`💰 코인 ${multiplier}배!`);
+                setTimeout(hideNotification, 1000);
+                saveData();
+                updateUI();
+                return;
+            }
+
             // 기본 무기
             state.actionMode = mode;
             updateUI();
         }
+
+        // 더블 코인 한도 초과 알림 (OK 버튼)
+        function showDoubleCoinLimitAlert() {
+            state.paused = true;
+            const alertDiv = document.createElement('div');
+            alertDiv.id = 'doublecoin-alert';
+            alertDiv.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+                align-items: center; justify-content: center; z-index: 100;
+            `;
+            alertDiv.innerHTML = `
+                <div style="background: #2d3748; padding: 30px; border-radius: 15px; text-align: center; border: 2px solid #4a5568;">
+                    <div style="color: #F6E05E; font-size: 24px; margin-bottom: 15px;">⚠️ 사용 불가</div>
+                    <div style="color: white; font-size: 18px; margin-bottom: 20px;">더블 코인은 판당 2회까지만 사용 가능합니다.</div>
+                    <button onclick="closeDoubleCoinAlert()" style="
+                        background: #4299E1; color: white; padding: 10px 40px;
+                        font-size: 18px; border-radius: 10px; border: none;
+                        cursor: pointer; font-family: 'Jua', sans-serif;
+                        box-shadow: 0 3px 0 #2B6CB0;
+                    ">OK</button>
+                </div>
+            `;
+            document.body.appendChild(alertDiv);
+        }
+
+        function closeDoubleCoinAlert() {
+            const alertDiv = document.getElementById('doublecoin-alert');
+            if (alertDiv) alertDiv.remove();
+            state.paused = false;
+            if (state.active) {
+                state.lastTime = performance.now();
+                requestAnimationFrame(animate);
+            }
+        }
+        window.closeDoubleCoinAlert = closeDoubleCoinAlert;
 
         // 아이템 구매
         ui.btnUpgrade.onclick = () => {
@@ -1083,6 +1175,15 @@
             }
         };
 
+        ui.btnBuyDoubleCoin.onclick = () => {
+            if(state.coins >= 50) {
+                state.coins -= 50;
+                state.consumables.doubleCoin++;
+                applyCooldown(ui.btnBuyDoubleCoin);
+                saveData(); updateUI();
+            }
+        };
+
         function openShop() {
             state.paused = true;
             ui.shopModal.style.display = 'flex';
@@ -1122,6 +1223,7 @@
             state.paused = false;
             state.score = 0;
             state.killedInSession = 0;
+            state.doubleCoinStacks = 0; // 더블 코인 스택 초기화
             state.hats = [];
             state.pets = [];
             state.particles = [];
